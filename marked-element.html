@@ -67,15 +67,20 @@ as you would a regular DOM element:
   <template>
     <style>
       :host {
-        display: inline-block;
+        display: block;
       }
-      
+
+      a {
+        text-decoration: none;
+        color: #0099cc !important;
+      }
+
       /* Thanks IE 10. */
       .hidden {
         display: none !important;
       }
     </style>
-    <slot name="markdown-html"></slot>
+    <content select=".markdown-html"></content>
     <div id="content" class="hidden"></div>
   </template>
 
@@ -106,6 +111,16 @@ as you would a regular DOM element:
         observer: 'render',
         type: Boolean,
         value: false
+      },
+      /**
+       * Function used to customize a renderer based on the [API specified in the Marked
+       * library](https://github.com/chjj/marked#overriding-renderer-methods).
+       * It takes one argument: a marked renderer object, which is mutated by the function.
+       */
+      renderer: {
+        observer: 'render',
+        type: Function,
+        value: null
       },
       /**
        * Sanitize the output. Ignore any HTML that has been input.
@@ -175,7 +190,7 @@ as you would a regular DOM element:
     },
 
     get outputElement () {
-      var child = Polymer.dom(this).queryDistributedElements('[slot="markdown-html"]')[0];
+      var child = Polymer.dom(this).queryDistributedElements('.markdown-html')[0];
 
       if (child)
         return child;
@@ -207,18 +222,23 @@ as you would a regular DOM element:
         Polymer.dom(this._outputElement).innerHTML = '';
         return;
       }
+      var renderer = new marked.Renderer();
+      if (this.renderer) {
+        this.renderer(renderer);
+      }
       var opts = {
+        renderer: renderer,
         highlight: this._highlight.bind(this),
         sanitize: this.sanitize,
         pedantic: this.pedantic,
         smartypants: this.smartypants
       };
       Polymer.dom(this._outputElement).innerHTML = marked(this.markdown, opts, this.callback);
-      this.fire('marked-render-complete', {}, {composed: true});
+      this.fire('marked-render-complete');
     },
 
     _highlight: function(code, lang) {
-      var event = this.fire('syntax-highlight', {code: code, lang: lang}, {composed: true});
+      var event = this.fire('syntax-highlight', {code: code, lang: lang});
       return event.detail.code || code;
     },
 
